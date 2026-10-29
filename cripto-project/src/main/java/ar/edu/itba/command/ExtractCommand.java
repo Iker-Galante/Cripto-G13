@@ -6,6 +6,7 @@ import ar.edu.itba.cli.Encryption;
 import ar.edu.itba.cli.Options;
 import ar.edu.itba.payload.HiddenFile;
 import ar.edu.itba.payload.PayloadCodec;
+import ar.edu.itba.steg.StegMethod;
 
 import java.io.PrintStream;
 import java.nio.file.Path;
@@ -17,20 +18,21 @@ public final class ExtractCommand {
     }
 
     public static void run(Options options, PrintStream out) {
+        StegMethod method = options.steg().orElseThrow();
         byte[] pixels = Bitmaps.read(options.bitmap()).pixels();
-        byte[] hidden = options.steg().algorithm().extract(pixels);
+        byte[] hidden = method.algorithm().extract(pixels);
 
         HiddenFile file;
         try {
             file = PayloadCodec.decode(hidden, options.encryption().map(Encryption::cipher));
         } catch (StegoException e) {
-            throw new StegoException("no se pudo recuperar un archivo oculto con " + options.steg() + " en "
+            throw new StegoException("no se pudo recuperar un archivo oculto con " + method + " en "
                     + options.bitmap() + ": " + e.getMessage(), e);
         }
-        Path output = Path.of(file.fileName(options.output()));
+        Path output = Path.of(file.fileName(options.output().orElseThrow()));
         FileIO.write(output, file.data());
 
         out.println("Se extrajo " + output + " (" + file.data().length + " bytes) de " + options.bitmap()
-                + " con " + options.steg() + ".");
+                + " con " + method + ".");
     }
 }

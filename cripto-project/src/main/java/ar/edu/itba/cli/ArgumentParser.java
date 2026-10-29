@@ -21,8 +21,13 @@ public final class ArgumentParser {
               stegobmp -extract -p <bitmap portador> -out <archivo salida> -steg <LSB1 | LSB4 | LSBI>
                        [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
 
+              stegobmp -analyze -p <bitmap> [-steg <LSB1 | LSB4 | LSBI>] [-out <prefijo salida>]
+                       [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
+
             Sin -pass no se encripta. Con -pass, si no se indica -a se usa aes128 y si no se indica -m se usa cbc.
-            Al extraer, se agrega al nombre indicado en -out la extensión del archivo oculto.""";
+            Al extraer, se agrega al nombre indicado en -out la extensión del archivo oculto.
+            -analyze busca un archivo oculto con LSB1, LSB4 y LSBI (o sólo con el método de -steg); si se indica
+            -out, guarda lo encontrado como <prefijo>_<método><extensión>.""";
 
     private static final String IN = "-in";
     private static final String BITMAP = "-p";
@@ -67,7 +72,7 @@ public final class ArgumentParser {
             }
         }
         if (command == null) {
-            throw new UsageException("debe indicarse la operación: -embed o -extract");
+            throw new UsageException("debe indicarse la operación: -embed, -extract o -analyze");
         }
 
         List<String> warnings = new ArrayList<>();
@@ -77,9 +82,14 @@ public final class ArgumentParser {
                 requireAll(values, command, BITMAP, OUT, STEG);
                 rejectAll(values, command, IN);
             }
+            case ANALYZE -> {
+                requireAll(values, command, BITMAP);
+                rejectAll(values, command, IN);
+            }
         }
-        return new Options(command, Optional.ofNullable(values.get(IN)), values.get(BITMAP), values.get(OUT),
-                parseSteg(values.get(STEG)), parseEncryption(values, warnings), List.copyOf(warnings));
+        return new Options(command, Optional.ofNullable(values.get(IN)), values.get(BITMAP),
+                Optional.ofNullable(values.get(OUT)), Optional.ofNullable(values.get(STEG)).map(ArgumentParser::parseSteg),
+                parseEncryption(values, warnings), List.copyOf(warnings));
     }
 
     private static StegMethod parseSteg(String value) {

@@ -3,6 +3,7 @@ package ar.edu.itba;
 import ar.edu.itba.cli.ArgumentParser;
 import ar.edu.itba.cli.Options;
 import ar.edu.itba.cli.UsageException;
+import ar.edu.itba.command.AnalyzeCommand;
 import ar.edu.itba.command.EmbedCommand;
 import ar.edu.itba.command.ExtractCommand;
 
@@ -30,6 +31,7 @@ public final class StegoBmp {
             switch (options.command()) {
                 case EMBED -> EmbedCommand.run(options, System.out);
                 case EXTRACT -> ExtractCommand.run(options, System.out);
+                case ANALYZE -> AnalyzeCommand.run(options, System.out);
             }
         } catch (UsageException e) {
             System.err.println("Error: " + e.getMessage());

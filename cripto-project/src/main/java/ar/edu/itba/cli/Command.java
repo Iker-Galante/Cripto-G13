@@ -2,7 +2,8 @@ package ar.edu.itba.cli;
 
 public enum Command {
     EMBED("-embed"),
-    EXTRACT("-extract");
+    EXTRACT("-extract"),
+    ANALYZE("-analyze");
 
     private final String flag;
 

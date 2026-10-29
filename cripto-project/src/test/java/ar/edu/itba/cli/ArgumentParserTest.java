@@ -29,8 +29,8 @@ class ArgumentParserTest {
         assertEquals(Command.EMBED, options.command());
         assertEquals(Optional.of("mensaje1.txt"), options.input());
         assertEquals("imagen1.bmp", options.bitmap());
-        assertEquals("imagenmas1.bmp", options.output());
-        assertEquals(StegMethod.LSBI, options.steg());
+        assertEquals(Optional.of("imagenmas1.bmp"), options.output());
+        assertEquals(Optional.of(StegMethod.LSBI), options.steg());
         assertEquals(Optional.of(new Encryption(CipherAlgorithm.DES3, CipherMode.CBC, "oculto")), options.encryption());
         assertTrue(options.warnings().isEmpty());
     }
@@ -41,7 +41,7 @@ class ArgumentParserTest {
 
         assertEquals(Command.EXTRACT, options.command());
         assertEquals(Optional.empty(), options.input());
-        assertEquals(StegMethod.LSB4, options.steg());
+        assertEquals(Optional.of(StegMethod.LSB4), options.steg());
         assertEquals(Optional.empty(), options.encryption());
     }
 
@@ -83,6 +83,25 @@ class ArgumentParserTest {
     }
 
     @Test
+    void analyzeOnlyRequiresTheBitmap() {
+        Options options = parse("-analyze -p a.bmp");
+
+        assertEquals(Command.ANALYZE, options.command());
+        assertEquals(Optional.empty(), options.steg());
+        assertEquals(Optional.empty(), options.output());
+        assertEquals(Optional.empty(), options.encryption());
+    }
+
+    @Test
+    void analyzeAcceptsMethodPrefixAndEncryption() {
+        Options options = parse("-analyze -p a.bmp -steg LSBI -out encontrado -a aes256 -m ofb -pass margarita");
+
+        assertEquals(Optional.of(StegMethod.LSBI), options.steg());
+        assertEquals(Optional.of("encontrado"), options.output());
+        assertEquals(Optional.of(new Encryption(CipherAlgorithm.AES256, CipherMode.OFB, "margarita")), options.encryption());
+    }
+
+    @Test
     void rejectsInvalidInput() {
         assertUsageError("-embed -in a.txt -p a.bmp -out b.bmp");
         assertUsageError("-embed -in a.txt -p a.bmp -out b.bmp -steg LSB2");
@@ -96,6 +115,9 @@ class ArgumentParserTest {
         assertUsageError("-p a.bmp -out b -steg LSB1");
         assertUsageError("-EMBED -in a.txt -p a.bmp -out b.bmp -steg LSB1");
         assertUsageError("-extract -p a.bmp -out b -steg LSB1 -verbose");
+        assertUsageError("-analyze -out encontrado");
+        assertUsageError("-analyze -in a.txt -p a.bmp");
+        assertUsageError("-analyze -extract -p a.bmp -out b -steg LSB1");
         assertThrows(UsageException.class, () -> ArgumentParser.parse(new String[0]));
     }
 }

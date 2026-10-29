@@ -16,6 +16,9 @@ import java.util.Optional;
  */
 public final class PayloadCodec {
 
+    /** Bytes que ocupa el tamaño al comienzo de lo oculto. */
+    public static final int SIZE_BYTES = HiddenFile.SIZE_BYTES;
+
     private PayloadCodec() {
     }
 
@@ -29,6 +32,11 @@ public final class PayloadCodec {
                 .putInt(encrypted.length)
                 .put(encrypted)
                 .array();
+    }
+
+    /** Tamaño declarado en los primeros 4 bytes extraídos (del archivo, o del cifrado si se encriptó). */
+    public static long declaredSize(byte[] hidden) {
+        return HiddenFile.readSize(hidden);
     }
 
     /** Interpreta los bytes extraídos del portador (pueden sobrar bytes al final). */
