@@ -1,10 +1,9 @@
 package ar.edu.itba.bmp;
 
 import ar.edu.itba.StegoException;
+import ar.edu.itba.TestBitmaps;
 import org.junit.jupiter.api.Test;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -13,27 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class BmpImageTest {
 
-    /** Arma un BMP V3 con los parámetros dados y los píxeles llenos con un patrón. */
-    static byte[] bmp(int width, int height, int bitsPerPixel, int compression, int trailing) {
-        int rowSize = (width * 3 + 3) / 4 * 4;
-        int pixelLength = rowSize * Math.abs(height);
-        ByteBuffer buffer = ByteBuffer.allocate(BmpImage.HEADER_SIZE + pixelLength + trailing)
-                .order(ByteOrder.LITTLE_ENDIAN);
-        buffer.put((byte) 'B').put((byte) 'M');
-        buffer.putInt(buffer.capacity());
-        buffer.putInt(0);
-        buffer.putInt(BmpImage.HEADER_SIZE);
-        buffer.putInt(40);
-        buffer.putInt(width);
-        buffer.putInt(height);
-        buffer.putShort((short) 1);
-        buffer.putShort((short) bitsPerPixel);
-        buffer.putInt(compression);
-        buffer.putInt(pixelLength);
-        for (int i = buffer.position(); i < buffer.capacity(); i++) {
-            buffer.put(i, (byte) (i * 31));
-        }
-        return buffer.array();
+    private static byte[] bmp(int width, int height, int bitsPerPixel, int compression, int trailing) {
+        return TestBitmaps.bmp(width, height, bitsPerPixel, compression, trailing, 1);
     }
 
     @Test
