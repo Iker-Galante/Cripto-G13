@@ -7,7 +7,8 @@ import java.util.function.Supplier;
 /** Métodos de esteganografiado disponibles por línea de comandos ({@code -steg}). */
 public enum StegMethod {
     LSB1(() -> new LsbN(1)),
-    LSB4(() -> new LsbN(4));
+    LSB4(() -> new LsbN(4)),
+    LSBI(Lsbi::new);
 
     private final Supplier<StegAlgorithm> factory;
 
