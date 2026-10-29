@@ -27,6 +27,19 @@
   </dependencies>
 
   <build>
+    <finalName>stegobmp</finalName>
+    <plugins>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>ar.edu.itba.StegoBmp</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
     <pluginManagement>
       <plugins>
         <plugin>

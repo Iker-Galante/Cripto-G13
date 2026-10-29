@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Lanzador de stegobmp: ejecuta el jar generado con "mvn clean package".
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+JAR="$DIR/target/stegobmp.jar"
+if [ ! -f "$JAR" ]; then
+    echo "Error: no se encontró $JAR. Generarlo ejecutando 'mvn clean package' en $DIR." >&2
+    exit 1
+fi
+exec java -jar "$JAR" "$@"

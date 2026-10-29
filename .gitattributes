@@ -1,0 +1,2 @@
+# El lanzador se ejecuta en Linux/WSL: siempre con fin de línea LF.
+cripto-project/stegobmp text eol=lf
