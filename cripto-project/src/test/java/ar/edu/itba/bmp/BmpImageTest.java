@@ -43,8 +43,7 @@ class BmpImageTest {
     void pixelsIncludeRowPadding() {
         byte[] pixels = BmpImage.parse(TestBmps.sixByFive()).pixels();
 
-        // Top row (green) is the last 20 bytes: 18 bytes of color, then 2 padding bytes.
-        // The last pixel is 00 FF 00 (blue, green, red) at indexes 95..97.
+        // Last row ends with a green pixel 00 FF 00 at 95..97, then padding at 98..99.
         assertEquals((byte) 0xFF, pixels[96]);
         assertEquals(0, pixels[97]);
         assertEquals(0, pixels[98]);
@@ -100,6 +99,14 @@ class BmpImageTest {
         ByteBuffer.wrap(file).order(ByteOrder.LITTLE_ENDIAN).putInt(0x0A, 155);
 
         assertRejected(file, "Corrupt header: invalid pixel data offset 155");
+    }
+
+    @Test
+    void rejectsOffsetInsideHeader() {
+        byte[] file = TestBmps.sixByFive();
+        ByteBuffer.wrap(file).order(ByteOrder.LITTLE_ENDIAN).putInt(0x0A, 40);
+
+        assertRejected(file, "Corrupt header: invalid pixel data offset 40");
     }
 
     private static void assertRejected(byte[] file, String expectedMessage) {

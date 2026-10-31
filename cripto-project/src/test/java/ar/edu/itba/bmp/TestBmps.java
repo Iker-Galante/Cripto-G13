@@ -3,18 +3,16 @@ package ar.edu.itba.bmp;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-/**
- * BMP files built in memory for tests, so no binary fixtures are needed in the repo.
- */
+// BMP files built in memory, so the repo needs no binary fixtures.
 final class TestBmps {
 
-    static final int WIDTH = 6;
-    static final int HEIGHT = 5;
-    static final int ROW_SIZE = 20;          // 6 pixels * 3 bytes = 18, padded to a multiple of 4
-    static final int PIXEL_DATA_SIZE = 100;  // 5 rows * 20 bytes
-    static final int V3_HEADER_SIZE = 54;
+    private static final int WIDTH = 6;
+    private static final int HEIGHT = 5;
+    private static final int ROW_SIZE = 20;          // 18 bytes of pixels, padded to a multiple of 4
+    private static final int PIXEL_DATA_SIZE = 100;  // 5 rows * 20 bytes
+    private static final int V3_HEADER_SIZE = 54;
 
-    // Colors in BMP byte order: blue, green, red.
+    // BMP stores colors as blue, green, red.
     private static final byte[] BLACK = {0x00, 0x00, 0x00};
     private static final byte[] WHITE = {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
     private static final byte[] BLUE = {(byte) 0xFF, 0x00, 0x00};
@@ -23,18 +21,12 @@ final class TestBmps {
     private TestBmps() {
     }
 
-    /**
-     * The 6x5 image from Nick's GIMP export, byte for byte: a V3 header (file size 154, offset
-     * 54) and five rows stored bottom-up: black, white, blue, white, green.
-     */
+    // Nick's 6x5 GIMP export, byte for byte.
     static byte[] sixByFive() {
         return withOffset(V3_HEADER_SIZE);
     }
 
-    /**
-     * The same pixels, with the header padded with zeros up to {@code offset} bytes and the
-     * offset and file size fields updated to match. 138 mimics GIMP's V5 export.
-     */
+    // Same pixels with the header zero-padded to offset bytes; 138 mimics GIMP's V5 export.
     static byte[] withOffset(int offset) {
         ByteBuffer file = ByteBuffer.allocate(offset + PIXEL_DATA_SIZE).order(ByteOrder.LITTLE_ENDIAN);
 
@@ -52,15 +44,16 @@ final class TestBmps {
         file.putShort((short) 24);               // bits per pixel
         file.putInt(0);                          // compression: none
         file.putInt(PIXEL_DATA_SIZE);
-        file.putInt(2835).putInt(2835);          // resolution, 72 DPI in pixels per meter
+        file.putInt(2835).putInt(2835);          // 72 DPI in pixels per meter
         file.putInt(0).putInt(0);                // palette colors, important colors
 
+        // Rows are stored bottom-up.
         file.position(offset);
         for (byte[] color : new byte[][] {BLACK, WHITE, BLUE, WHITE, GREEN}) {
             for (int x = 0; x < WIDTH; x++) {
                 file.put(color);
             }
-            file.put(new byte[ROW_SIZE - WIDTH * 3]);  // row padding
+            file.put(new byte[ROW_SIZE - WIDTH * 3]);
         }
         return file.array();
     }
