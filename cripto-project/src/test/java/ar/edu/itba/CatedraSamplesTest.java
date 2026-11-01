@@ -50,11 +50,19 @@ class CatedraSamplesTest {
     }
 
     @Test
-    void lsb1AndLsb4HideTheSameFile() throws IOException {
+    void lsbiSampleExtractsAndReembedsIdentically() throws Exception {
+        checkSample("LSBI");
+    }
+
+    @Test
+    void allThreeSamplesHideTheSameFile() throws IOException {
         assertEquals(0, run("-extract", "-p", sample("ladoLSB1.bmp"), "-out", path("from1"), "-steg", "LSB1"));
         assertEquals(0, run("-extract", "-p", sample("ladoLSB4.bmp"), "-out", path("from4"), "-steg", "LSB4"));
+        assertEquals(0, run("-extract", "-p", sample("ladoLSBI.bmp"), "-out", path("fromI"), "-steg", "LSBI"));
 
-        assertArrayEquals(Files.readAllBytes(dir.resolve("from1.png")), Files.readAllBytes(dir.resolve("from4.png")));
+        byte[] fromLsb1 = Files.readAllBytes(dir.resolve("from1.png"));
+        assertArrayEquals(fromLsb1, Files.readAllBytes(dir.resolve("from4.png")));
+        assertArrayEquals(fromLsb1, Files.readAllBytes(dir.resolve("fromI.png")));
     }
 
     // Extract the sample, then embed what we got into the clean carrier: we must rebuild the sample byte for byte.

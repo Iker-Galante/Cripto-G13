@@ -1,6 +1,7 @@
 package ar.edu.itba.cli;
 
 import ar.edu.itba.cli.Arguments.Command;
+import ar.edu.itba.steg.StegMethod;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -9,8 +10,6 @@ import java.util.Set;
 public final class ArgumentParser {
 
     private static final Set<String> VALUE_FLAGS = Set.of("-in", "-p", "-out", "-steg");
-    private static final Set<String> METHODS = Set.of("LSB1", "LSB4");
-    private static final Set<String> PLANNED_METHODS = Set.of("LSBI");
 
     private ArgumentParser() {
     }
@@ -50,11 +49,11 @@ public final class ArgumentParser {
         require(values, "-p");
         require(values, "-out");
         require(values, "-steg");
-        checkMethod(values.get("-steg"));
+        StegMethod method = stegMethod(values.get("-steg"));
 
         Path inFile = command == Command.EMBED ? Path.of(values.get("-in")) : null;
         return new Arguments(command, inFile, Path.of(values.get("-p")),
-                Path.of(values.get("-out")), values.get("-steg"));
+                Path.of(values.get("-out")), method);
     }
 
     private static void require(Map<String, String> values, String flag) {
@@ -63,12 +62,11 @@ public final class ArgumentParser {
         }
     }
 
-    private static void checkMethod(String method) {
-        if (PLANNED_METHODS.contains(method)) {
-            throw new UsageException("Method " + method + " is not implemented yet");
-        }
-        if (!METHODS.contains(method)) {
-            throw new UsageException("Invalid steganography method: " + method);
+    private static StegMethod stegMethod(String value) {
+        try {
+            return StegMethod.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new UsageException("Invalid steganography method: " + value);
         }
     }
 }

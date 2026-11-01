@@ -9,8 +9,6 @@ import ar.edu.itba.cli.UsageException;
 import ar.edu.itba.payload.Decoded;
 import ar.edu.itba.payload.PayloadCodec;
 import ar.edu.itba.payload.PayloadException;
-import ar.edu.itba.steg.LsbSteganographer;
-import ar.edu.itba.steg.Steganographer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -22,8 +20,8 @@ public final class Main {
 
     static final String USAGE = """
             Usage:
-              stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4>
-              stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4>""";
+              stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4 | LSBI>
+              stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4 | LSBI>""";
 
     private Main() {
     }
@@ -66,7 +64,7 @@ public final class Main {
         byte[] payload = PayloadCodec.encode(Files.readAllBytes(arguments.inFile()), extension);
 
         byte[] pixels = carrier.pixels();
-        steganographer(arguments.stegMethod()).embed(pixels, payload);
+        arguments.stegMethod().create().embed(pixels, payload);
 
         try (OutputStream out = Files.newOutputStream(arguments.outFile())) {
             out.write(carrier.header());
@@ -76,19 +74,10 @@ public final class Main {
 
     private static void extract(Arguments arguments) throws IOException {
         BmpImage carrier = BmpImage.parse(Files.readAllBytes(arguments.carrier()));
-        Decoded decoded = PayloadCodec.decode(steganographer(arguments.stegMethod()).extract(carrier.pixels()));
+        Decoded decoded = PayloadCodec.decode(arguments.stegMethod().create().extract(carrier.pixels()));
 
         // -out is a name without extension; the extension comes from the hidden payload.
         Files.write(Path.of(arguments.outFile() + decoded.extension()), decoded.data());
-    }
-
-    // ArgumentParser has already rejected every other method.
-    private static Steganographer steganographer(String method) {
-        return switch (method) {
-            case "LSB1" -> new LsbSteganographer(1);
-            case "LSB4" -> new LsbSteganographer(4);
-            default -> throw new IllegalStateException("Unexpected method " + method);
-        };
     }
 
     private static String extensionOf(Path file) {

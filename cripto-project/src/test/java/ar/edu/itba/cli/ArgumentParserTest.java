@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ar.edu.itba.cli.Arguments.Command;
+import ar.edu.itba.steg.StegMethod;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
@@ -18,7 +19,7 @@ class ArgumentParserTest {
         assertEquals(Path.of("hola.txt"), arguments.inFile());
         assertEquals(Path.of("carrier.bmp"), arguments.carrier());
         assertEquals(Path.of("out.bmp"), arguments.outFile());
-        assertEquals("LSB1", arguments.stegMethod());
+        assertEquals(StegMethod.LSB1, arguments.stegMethod());
     }
 
     @Test
@@ -61,13 +62,19 @@ class ArgumentParserTest {
 
     @Test
     void acceptsLsb4ForEmbedAndExtract() {
-        assertEquals("LSB4", parse("-embed -in hola.txt -p carrier.bmp -out out.bmp -steg LSB4").stegMethod());
-        assertEquals("LSB4", parse("-extract -p out.bmp -out back -steg LSB4").stegMethod());
+        assertEquals(StegMethod.LSB4, parse("-embed -in hola.txt -p carrier.bmp -out out.bmp -steg LSB4").stegMethod());
+        assertEquals(StegMethod.LSB4, parse("-extract -p out.bmp -out back -steg LSB4").stegMethod());
     }
 
     @Test
-    void lsbiIsNotImplementedYet() {
-        assertRejected("-extract -p out.bmp -out back -steg LSBI", "Method LSBI is not implemented yet");
+    void acceptsLsbiForEmbedAndExtract() {
+        assertEquals(StegMethod.LSBI, parse("-embed -in hola.txt -p carrier.bmp -out out.bmp -steg LSBI").stegMethod());
+        assertEquals(StegMethod.LSBI, parse("-extract -p out.bmp -out back -steg LSBI").stegMethod());
+    }
+
+    @Test
+    void unknownMethodFails() {
+        assertRejected("-extract -p out.bmp -out back -steg LSB2", "Invalid steganography method: LSB2");
     }
 
     @Test
@@ -79,6 +86,7 @@ class ArgumentParserTest {
     void methodIsCaseSensitive() {
         assertRejected("-extract -p out.bmp -out back -steg lsb1", "Invalid steganography method: lsb1");
         assertRejected("-extract -p out.bmp -out back -steg lsb4", "Invalid steganography method: lsb4");
+        assertRejected("-extract -p out.bmp -out back -steg lsbi", "Invalid steganography method: lsbi");
     }
 
     @Test

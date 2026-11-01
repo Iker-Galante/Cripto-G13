@@ -15,15 +15,15 @@ This creates `target/stegobmp.jar`.
 ## Usage
 
 ```
-./stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4>
-./stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4>
+./stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4 | LSBI>
+./stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4 | LSBI>
 ```
 
 - `-embed` hides `-in` inside the image `-p` and writes the result to `-out`.
 - `-extract` recovers the file hidden in `-p`. Give `-out` without an extension: the program adds
   the extension stored with the file (`-out back` gives `back.txt`).
 
-`LSB1` and `LSB4` work; no encryption yet.
+`LSB1`, `LSB4` and `LSBI` work; no encryption yet.
 
 Example:
 
