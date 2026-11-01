@@ -60,8 +60,14 @@ class ArgumentParserTest {
     }
 
     @Test
-    void lsb4IsNotImplementedYet() {
-        assertRejected("-extract -p out.bmp -out back -steg LSB4", "Method LSB4 is not implemented yet");
+    void acceptsLsb4ForEmbedAndExtract() {
+        assertEquals("LSB4", parse("-embed -in hola.txt -p carrier.bmp -out out.bmp -steg LSB4").stegMethod());
+        assertEquals("LSB4", parse("-extract -p out.bmp -out back -steg LSB4").stegMethod());
+    }
+
+    @Test
+    void lsbiIsNotImplementedYet() {
+        assertRejected("-extract -p out.bmp -out back -steg LSBI", "Method LSBI is not implemented yet");
     }
 
     @Test
@@ -72,6 +78,7 @@ class ArgumentParserTest {
     @Test
     void methodIsCaseSensitive() {
         assertRejected("-extract -p out.bmp -out back -steg lsb1", "Invalid steganography method: lsb1");
+        assertRejected("-extract -p out.bmp -out back -steg lsb4", "Invalid steganography method: lsb4");
     }
 
     @Test

@@ -52,6 +52,32 @@ class MainTest {
     }
 
     @Test
+    void lsb4EmbedThenExtractGivesTheSameFile() throws IOException {
+        byte[] secret = "hey".getBytes(StandardCharsets.US_ASCII);
+        write("6x5.bmp", TestBmps.sixByFive());
+        write("hola.txt", secret);
+
+        assertEquals(0, run("-embed", "-in", path("hola.txt"), "-p", path("6x5.bmp"),
+                "-out", path("out.bmp"), "-steg", "LSB4"));
+        assertEquals(0, run("-extract", "-p", path("out.bmp"), "-out", path("back"), "-steg", "LSB4"));
+
+        assertArrayEquals(secret, Files.readAllBytes(dir.resolve("back.txt")));
+        assertEquals("", errText());
+    }
+
+    @Test
+    void lsb4EmbedFailsWhenFileDoesNotFit() throws IOException {
+        // 4 + 42 + 5 = 51 bytes, one more than the 50 that LSB4 fits in the 6x5 image.
+        write("6x5.bmp", TestBmps.sixByFive());
+        write("big.txt", new byte[42]);
+
+        assertEquals(1, run("-embed", "-in", path("big.txt"), "-p", path("6x5.bmp"),
+                "-out", path("out.bmp"), "-steg", "LSB4"));
+
+        assertTrue(errText().contains("maximum capacity with LSB4 is 50 bytes"), errText());
+    }
+
+    @Test
     void embedFailsForFileWithoutExtension() throws IOException {
         write("6x5.bmp", TestBmps.sixByFive());
         write("hola", new byte[] {1});
