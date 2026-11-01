@@ -76,6 +76,15 @@ class MainTest {
         assertEquals("Error: File not found: " + path("nope.bmp"), errText().strip());
     }
 
+    @Test
+    void extractFromCleanCarrierSaysNothingIsHidden() throws IOException {
+        write("6x5.bmp", TestBmps.sixByFive());
+
+        assertEquals(1, run("-extract", "-p", path("6x5.bmp"), "-out", path("back"), "-steg", "LSB1"));
+
+        assertEquals("Error: No hidden data found in the carrier (or wrong -steg method)", errText().strip());
+    }
+
     private int run(String... args) {
         return Main.run(args, err);
     }

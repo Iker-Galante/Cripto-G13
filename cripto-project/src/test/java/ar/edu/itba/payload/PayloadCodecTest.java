@@ -91,6 +91,25 @@ class PayloadCodecTest {
     }
 
     @Test
+    void decodeRejectsExtensionThatEscapesTheFolder() {
+        byte[] block = withExtension(".x/../../escaped");
+
+        assertRejected(block, "Payload extension has invalid characters");
+    }
+
+    @Test
+    void decodeRejectsBackslashInExtension() {
+        assertRejected(withExtension(".x\\..\\escaped"), "Payload extension has invalid characters");
+    }
+
+    @Test
+    void decodeRejectsNonAsciiExtension() {
+        byte[] block = {0, 0, 0, 1, 'a', '.', 'j', 'p', (byte) 0xE9, 0};
+
+        assertRejected(block, "Payload extension has invalid characters");
+    }
+
+    @Test
     void encodeRejectsExtensionWithoutDot() {
         IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
                 () -> PayloadCodec.encode(new byte[] {1}, "txt"));
@@ -114,6 +133,27 @@ class PayloadCodecTest {
     @Test
     void encodeRejectsNulInExtension() {
         assertThrows(IllegalArgumentException.class, () -> PayloadCodec.encode(new byte[] {1}, ".t\0t"));
+    }
+
+    @Test
+    void encodeRejectsSlashInExtension() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> PayloadCodec.encode(new byte[] {1}, ".x/../escaped"));
+
+        assertEquals("Extension must not contain '/' or '\\', got \".x/../escaped\"", e.getMessage());
+    }
+
+    @Test
+    void encodeRejectsBackslashInExtension() {
+        assertThrows(IllegalArgumentException.class, () -> PayloadCodec.encode(new byte[] {1}, ".x\\y"));
+    }
+
+    // A block holding one data byte 'a' and the given extension, built by hand so encode's checks don't apply.
+    private static byte[] withExtension(String extension) {
+        byte[] ext = extension.getBytes(StandardCharsets.US_ASCII);
+        byte[] block = Arrays.copyOf(new byte[] {0, 0, 0, 1, 'a'}, 5 + ext.length + 1);
+        System.arraycopy(ext, 0, block, 5, ext.length);
+        return block;
     }
 
     private static void assertRoundTrip(byte[] data, String extension) {

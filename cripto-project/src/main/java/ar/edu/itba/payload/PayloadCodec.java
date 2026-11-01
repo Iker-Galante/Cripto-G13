@@ -17,8 +17,11 @@ public final class PayloadCodec {
         if (!extension.startsWith(".")) {
             throw new IllegalArgumentException("Extension must start with '.', got \"" + extension + "\"");
         }
-        if (!extension.chars().allMatch(c -> c >= 1 && c <= 127)) {
+        if (!isAsciiWithoutNul(extension)) {
             throw new IllegalArgumentException("Extension must be ASCII without NUL, got \"" + extension + "\"");
+        }
+        if (hasPathSeparator(extension)) {
+            throw new IllegalArgumentException("Extension must not contain '/' or '\\', got \"" + extension + "\"");
         }
         byte[] extensionBytes = extension.getBytes(StandardCharsets.US_ASCII);
 
@@ -54,7 +57,20 @@ public final class PayloadCodec {
 
         byte[] data = Arrays.copyOfRange(block, SIZE_FIELD_LENGTH, extensionStart);
         String extension = new String(block, extensionStart, nul - extensionStart, StandardCharsets.US_ASCII);
+        // The extension becomes part of the output file name, so a crafted "/../" must not get through.
+        if (!isAsciiWithoutNul(extension) || hasPathSeparator(extension)) {
+            throw new PayloadException("Payload extension has invalid characters");
+        }
         return new Decoded(data, extension);
+    }
+
+    // Bytes above 127 decode as U+FFFD, so this also rejects them on decode.
+    private static boolean isAsciiWithoutNul(String text) {
+        return text.chars().allMatch(c -> c >= 1 && c <= 127);
+    }
+
+    private static boolean hasPathSeparator(String text) {
+        return text.indexOf('/') >= 0 || text.indexOf('\\') >= 0;
     }
 
     private static int indexOfZero(byte[] bytes, int from) {

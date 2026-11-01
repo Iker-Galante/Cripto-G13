@@ -74,6 +74,23 @@ class ArgumentParserTest {
         assertRejected("-extract -p out.bmp -out back -steg lsb1", "Invalid steganography method: lsb1");
     }
 
+    @Test
+    void bothCommandsFail() {
+        assertRejected("-embed -extract -in hola.txt -p carrier.bmp -out out.bmp -steg LSB1",
+                "Give only one of -embed or -extract");
+    }
+
+    @Test
+    void repeatedFlagFails() {
+        assertRejected("-extract -p a.bmp -p b.bmp -out back -steg LSB1", "Repeated option: -p");
+    }
+
+    @Test
+    void inWithExtractFails() {
+        assertRejected("-extract -in hola.txt -p out.bmp -out back -steg LSB1",
+                "Option -in is not used with -extract");
+    }
+
     private static Arguments parse(String commandLine) {
         return ArgumentParser.parse(commandLine.split(" "));
     }

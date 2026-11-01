@@ -55,7 +55,7 @@ public final class Main {
         } catch (BmpException | IllegalArgumentException e) {
             err.println("Error: " + e.getMessage());
         } catch (PayloadException e) {
-            err.println("Error: No valid hidden data in the carrier (" + e.getMessage() + ")");
+            err.println("Error: No hidden data found in the carrier (or wrong -steg method)");
         }
         return 1;
     }
