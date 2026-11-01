@@ -4,7 +4,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 // BMP files built in memory, so the repo needs no binary fixtures.
-final class TestBmps {
+public final class TestBmps {
 
     private static final int WIDTH = 6;
     private static final int HEIGHT = 5;
@@ -22,12 +22,12 @@ final class TestBmps {
     }
 
     // Nick's 6x5 GIMP export, byte for byte.
-    static byte[] sixByFive() {
+    public static byte[] sixByFive() {
         return withOffset(V3_HEADER_SIZE);
     }
 
     // Same pixels with the header zero-padded to offset bytes; 138 mimics GIMP's V5 export.
-    static byte[] withOffset(int offset) {
+    public static byte[] withOffset(int offset) {
         ByteBuffer file = ByteBuffer.allocate(offset + PIXEL_DATA_SIZE).order(ByteOrder.LITTLE_ENDIAN);
 
         // File header (14 bytes)
@@ -58,13 +58,13 @@ final class TestBmps {
         return file.array();
     }
 
-    static byte[] withBitsPerPixel(int bitsPerPixel) {
+    public static byte[] withBitsPerPixel(int bitsPerPixel) {
         byte[] file = sixByFive();
         ByteBuffer.wrap(file).order(ByteOrder.LITTLE_ENDIAN).putShort(0x1C, (short) bitsPerPixel);
         return file;
     }
 
-    static byte[] withCompression(int compression) {
+    public static byte[] withCompression(int compression) {
         byte[] file = sixByFive();
         ByteBuffer.wrap(file).order(ByteOrder.LITTLE_ENDIAN).putInt(0x1E, compression);
         return file;
