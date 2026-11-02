@@ -13,8 +13,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -41,17 +43,32 @@ class CatedraSamplesTest {
 
     @Test
     void lsb1SampleExtractsAndReembedsIdentically() throws Exception {
-        checkSample("LSB1");
+        checkSample("ladoLSB1.bmp", "LSB1");
     }
 
     @Test
     void lsb4SampleExtractsAndReembedsIdentically() throws Exception {
-        checkSample("LSB4");
+        checkSample("ladoLSB4.bmp", "LSB4");
     }
 
     @Test
     void lsbiSampleExtractsAndReembedsIdentically() throws Exception {
-        checkSample("LSBI");
+        checkSample("ladoLSBI.bmp", "LSBI");
+    }
+
+    @Test
+    void lsb1Aes128CbcSampleExtractsAndReembedsIdentically() throws Exception {
+        checkSample("ladoLSB1aes128cbc.bmp", "LSB1", "-a", "aes128", "-m", "cbc", "-pass", "margarita");
+    }
+
+    @Test
+    void lsbiAes256OfbSampleExtractsAndReembedsIdentically() throws Exception {
+        checkSample("ladoLSBIaes256ofb.bmp", "LSBI", "-a", "aes256", "-m", "ofb", "-pass", "margarita");
+    }
+
+    @Test
+    void lsbi3desCfbSampleExtractsAndReembedsIdentically() throws Exception {
+        checkSample("ladoLSBIdescfb.bmp", "LSBI", "-a", "3des", "-m", "cfb", "-pass", "margarita");
     }
 
     @Test
@@ -66,19 +83,28 @@ class CatedraSamplesTest {
     }
 
     // Extract the sample, then embed what we got into the clean carrier: we must rebuild the sample byte for byte.
-    private void checkSample(String method) throws IOException, NoSuchAlgorithmException {
-        Path stego = samples.resolve("lado" + method + ".bmp");
+    // cipherOptions are the -a, -m and -pass arguments, used the same way for extract and embed.
+    private void checkSample(String sampleName, String method, String... cipherOptions)
+            throws IOException, NoSuchAlgorithmException {
+        Path stego = samples.resolve(sampleName);
 
-        assertEquals(0, run("-extract", "-p", stego.toString(), "-out", path("hidden"), "-steg", method));
+        assertEquals(0, run(withOptions(cipherOptions,
+                "-extract", "-p", stego.toString(), "-out", path("hidden"), "-steg", method)));
         byte[] png = Files.readAllBytes(dir.resolve("hidden.png"));
         assertEquals(HIDDEN_PNG_SIZE, png.length);
         assertArrayEquals(PNG_SIGNATURE, Arrays.copyOf(png, PNG_SIGNATURE.length));
         String sha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(png));
         assertTrue(sha256.startsWith(HIDDEN_PNG_SHA256_PREFIX), sha256);
 
-        assertEquals(0, run("-embed", "-in", path("hidden.png"), "-p", sample("lado.bmp"),
-                "-out", path("ours.bmp"), "-steg", method));
+        assertEquals(0, run(withOptions(cipherOptions, "-embed", "-in", path("hidden.png"), "-p", sample("lado.bmp"),
+                "-out", path("ours.bmp"), "-steg", method)));
         assertArrayEquals(Files.readAllBytes(stego), Files.readAllBytes(dir.resolve("ours.bmp")));
+    }
+
+    private static String[] withOptions(String[] options, String... args) {
+        List<String> all = new ArrayList<>(List.of(args));
+        all.addAll(List.of(options));
+        return all.toArray(String[]::new);
     }
 
     private int run(String... args) {

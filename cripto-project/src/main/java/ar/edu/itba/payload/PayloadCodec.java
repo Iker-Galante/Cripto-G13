@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 // Block layout: size (4 bytes, big-endian) || file bytes || ".ext" || 0
+// Encrypted layout: cipherLength (4 bytes, big-endian) || ciphertext, where the ciphertext decrypts to the plain layout.
 public final class PayloadCodec {
 
     private static final int SIZE_FIELD_LENGTH = 4;
@@ -32,6 +33,27 @@ public final class PayloadCodec {
                 .put(extensionBytes)
                 .put((byte) 0)
                 .array();
+    }
+
+    public static byte[] prependLength(byte[] block) {
+        return ByteBuffer.allocate(SIZE_FIELD_LENGTH + block.length)
+                .putInt(block.length)
+                .put(block)
+                .array();
+    }
+
+    // Returns the bytes the length prefix announces; anything after them is ignored.
+    // The length is checked against the block before copying, so garbage cannot ask for a huge array.
+    public static byte[] readLengthPrefixed(byte[] block) {
+        if (block.length < SIZE_FIELD_LENGTH) {
+            throw new PayloadException("Payload too short: " + block.length + " bytes");
+        }
+        int length = ByteBuffer.wrap(block).getInt();
+        if (length < 0 || length > block.length - SIZE_FIELD_LENGTH) {
+            throw new PayloadException("Invalid cipher length " + length
+                    + " for a block of " + block.length + " bytes");
+        }
+        return Arrays.copyOfRange(block, SIZE_FIELD_LENGTH, SIZE_FIELD_LENGTH + length);
     }
 
     // Bytes after the extension's NUL are ignored, so callers can pass everything extracted.

@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import ar.edu.itba.cli.Arguments.Command;
+import ar.edu.itba.crypto.CipherAlgorithm;
+import ar.edu.itba.crypto.CipherMode;
+import ar.edu.itba.crypto.CipherSpec;
 import ar.edu.itba.steg.StegMethod;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -56,8 +59,75 @@ class ArgumentParserTest {
     }
 
     @Test
-    void passIsUnknownForNow() {
-        assertRejected("-extract -p out.bmp -out back -steg LSB1 -pass secreto", "Unknown option: -pass");
+    void unknownFlagFails() {
+        assertRejected("-extract -p out.bmp -out back -steg LSB1 -analyze", "Unknown option: -analyze");
+    }
+
+    @Test
+    void noPassMeansNoEncryption() {
+        assertNull(parse("-extract -p out.bmp -out back -steg LSB1").cipher());
+        assertNull(parse("-extract -p out.bmp -out back -steg LSB1 -a aes256 -m ofb").cipher());
+    }
+
+    @Test
+    void passAloneMeansAes128Cbc() {
+        assertEquals(new CipherSpec(CipherAlgorithm.AES128, CipherMode.CBC, "secreto"),
+                parse("-extract -p out.bmp -out back -steg LSB1 -pass secreto").cipher());
+    }
+
+    @Test
+    void passWithAlgorithmMeansCbc() {
+        assertEquals(new CipherSpec(CipherAlgorithm.TRIPLE_DES, CipherMode.CBC, "secreto"),
+                parse("-extract -p out.bmp -out back -steg LSB1 -a 3des -pass secreto").cipher());
+    }
+
+    @Test
+    void passWithModeMeansAes128() {
+        assertEquals(new CipherSpec(CipherAlgorithm.AES128, CipherMode.OFB, "secreto"),
+                parse("-extract -p out.bmp -out back -steg LSB1 -m ofb -pass secreto").cipher());
+    }
+
+    @Test
+    void allThreeCipherOptionsAreUsedAsGiven() {
+        assertEquals(new CipherSpec(CipherAlgorithm.AES192, CipherMode.ECB, "secreto"),
+                parse("-extract -p out.bmp -out back -steg LSB1 -pass secreto -m ecb -a aes192").cipher());
+    }
+
+    @Test
+    void invalidAlgorithmFails() {
+        assertRejected("-extract -p out.bmp -out back -steg LSB1 -a aes -pass x", "Invalid encryption algorithm: aes");
+        assertRejected("-extract -p out.bmp -out back -steg LSB1 -a AES128 -pass x", "Invalid encryption algorithm: AES128");
+    }
+
+    @Test
+    void invalidModeFails() {
+        assertRejected("-extract -p out.bmp -out back -steg LSB1 -m ctr -pass x", "Invalid encryption mode: ctr");
+        assertRejected("-extract -p out.bmp -out back -steg LSB1 -m CBC -pass x", "Invalid encryption mode: CBC");
+    }
+
+    @Test
+    void invalidAlgorithmFailsEvenWithoutPass() {
+        assertRejected("-extract -p out.bmp -out back -steg LSB1 -a aes", "Invalid encryption algorithm: aes");
+    }
+
+    @Test
+    void emptyPasswordFails() {
+        String[] args = {"-extract", "-p", "out.bmp", "-out", "back", "-steg", "LSB1", "-pass", ""};
+
+        UsageException e = assertThrows(UsageException.class, () -> ArgumentParser.parse(args));
+        assertEquals("Password must not be empty", e.getMessage());
+    }
+
+    @Test
+    void parsesTheStatementExamples() {
+        // Statement section 5, Example 1 (with encryption) and Example 2 (without).
+        Arguments example1 = parse("-embed -in mensaje1.txt -p imagen1.bmp -out imagenmas1.bmp -steg LSBI -a 3des -m cbc -pass oculto");
+        Arguments example2 = parse("-embed -in mensaje1.txt -p imagen1.bmp -out imagenmas1.bmp -steg LSBI");
+
+        assertEquals(new CipherSpec(CipherAlgorithm.TRIPLE_DES, CipherMode.CBC, "oculto"), example1.cipher());
+        assertEquals(StegMethod.LSBI, example1.stegMethod());
+        assertNull(example2.cipher());
+        assertEquals(Path.of("imagenmas1.bmp"), example2.outFile());
     }
 
     @Test

@@ -156,6 +156,43 @@ class PayloadCodecTest {
         return block;
     }
 
+    @Test
+    void lengthPrefixRoundTrips() {
+        byte[] block = {1, 2, 3, 4, 5};
+
+        assertArrayEquals(block, PayloadCodec.readLengthPrefixed(PayloadCodec.prependLength(block)));
+        assertArrayEquals(new byte[0], PayloadCodec.readLengthPrefixed(PayloadCodec.prependLength(new byte[0])));
+    }
+
+    @Test
+    void lengthPrefixIsBigEndianAndTrailingBytesAreIgnored() {
+        byte[] block = {0, 0, 0, 2, 7, 8, 9, 9, 9};
+
+        assertArrayEquals(new byte[] {0, 0, 0, 2, 7, 8}, PayloadCodec.prependLength(new byte[] {7, 8}));
+        assertArrayEquals(new byte[] {7, 8}, PayloadCodec.readLengthPrefixed(block));
+    }
+
+    @Test
+    void readLengthPrefixedRejectsShortBlock() {
+        assertPrefixRejected(new byte[] {0, 0, 1}, "Payload too short: 3 bytes");
+    }
+
+    @Test
+    void readLengthPrefixedRejectsNegativeLength() {
+        assertPrefixRejected(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, 1},
+                "Invalid cipher length -1 for a block of 5 bytes");
+    }
+
+    @Test
+    void readLengthPrefixedRejectsLengthLargerThanBlock() {
+        assertPrefixRejected(new byte[] {0, 0, 0, 3, 1, 2}, "Invalid cipher length 3 for a block of 6 bytes");
+    }
+
+    private static void assertPrefixRejected(byte[] block, String expectedMessage) {
+        PayloadException e = assertThrows(PayloadException.class, () -> PayloadCodec.readLengthPrefixed(block));
+        assertEquals(expectedMessage, e.getMessage());
+    }
+
     private static void assertRoundTrip(byte[] data, String extension) {
         Decoded decoded = PayloadCodec.decode(PayloadCodec.encode(data, extension));
 

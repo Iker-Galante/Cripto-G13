@@ -6,6 +6,8 @@ import ar.edu.itba.cli.ArgumentParser;
 import ar.edu.itba.cli.Arguments;
 import ar.edu.itba.cli.Arguments.Command;
 import ar.edu.itba.cli.UsageException;
+import ar.edu.itba.crypto.CryptoException;
+import ar.edu.itba.crypto.PayloadCipher;
 import ar.edu.itba.payload.Decoded;
 import ar.edu.itba.payload.PayloadCodec;
 import ar.edu.itba.payload.PayloadException;
@@ -20,8 +22,8 @@ public final class Main {
 
     static final String USAGE = """
             Usage:
-              stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4 | LSBI>
-              stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4 | LSBI>""";
+              stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
+              stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]""";
 
     private Main() {
     }
@@ -50,10 +52,10 @@ public final class Main {
             err.println("Error: File not found: " + e.getFile());
         } catch (IOException e) {
             err.println("Error: Cannot read or write " + e.getMessage());
-        } catch (BmpException | IllegalArgumentException e) {
+        } catch (BmpException | CryptoException | IllegalArgumentException e) {
             err.println("Error: " + e.getMessage());
         } catch (PayloadException e) {
-            err.println("Error: No hidden data found in the carrier (or wrong -steg method)");
+            err.println("Error: No hidden data found in the carrier (or wrong -steg method, -a, -m or -pass)");
         }
         return 1;
     }
@@ -62,6 +64,9 @@ public final class Main {
         String extension = extensionOf(arguments.inFile());
         BmpImage carrier = BmpImage.parse(Files.readAllBytes(arguments.carrier()));
         byte[] payload = PayloadCodec.encode(Files.readAllBytes(arguments.inFile()), extension);
+        if (arguments.cipher() != null) {
+            payload = PayloadCodec.prependLength(new PayloadCipher(arguments.cipher()).encrypt(payload));
+        }
 
         byte[] pixels = carrier.pixels();
         arguments.stegMethod().create().embed(pixels, payload);
@@ -74,7 +79,11 @@ public final class Main {
 
     private static void extract(Arguments arguments) throws IOException {
         BmpImage carrier = BmpImage.parse(Files.readAllBytes(arguments.carrier()));
-        Decoded decoded = PayloadCodec.decode(arguments.stegMethod().create().extract(carrier.pixels()));
+        byte[] hidden = arguments.stegMethod().create().extract(carrier.pixels());
+        if (arguments.cipher() != null) {
+            hidden = new PayloadCipher(arguments.cipher()).decrypt(PayloadCodec.readLengthPrefixed(hidden));
+        }
+        Decoded decoded = PayloadCodec.decode(hidden);
 
         // -out is a name without extension; the extension comes from the hidden payload.
         Files.write(Path.of(arguments.outFile() + decoded.extension()), decoded.data());

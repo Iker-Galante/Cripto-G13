@@ -12,10 +12,15 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class MainTest {
+
+    private static final String NO_HIDDEN_DATA =
+            "Error: No hidden data found in the carrier (or wrong -steg method, -a, -m or -pass)";
+    private static final byte[] SECRET = "hey".getBytes(StandardCharsets.US_ASCII);
 
     @TempDir
     Path dir;
@@ -116,9 +121,9 @@ class MainTest {
 
     @Test
     void usageErrorPrintsReasonAndUsage() {
-        assertEquals(1, run("-extract", "-p", "out.bmp", "-out", "back", "-steg", "LSB1", "-pass", "x"));
+        assertEquals(1, run("-extract", "-p", "out.bmp", "-out", "back", "-steg", "LSB1", "-analyze"));
 
-        assertEquals("Error: Unknown option: -pass\n" + Main.USAGE, errText().strip());
+        assertEquals("Error: Unknown option: -analyze\n" + Main.USAGE, errText().strip());
     }
 
     @Test
@@ -134,7 +139,77 @@ class MainTest {
 
         assertEquals(1, run("-extract", "-p", path("6x5.bmp"), "-out", path("back"), "-steg", "LSB1"));
 
-        assertEquals("Error: No hidden data found in the carrier (or wrong -steg method)", errText().strip());
+        assertEquals(NO_HIDDEN_DATA, errText().strip());
+    }
+
+    @Test
+    void encryptedRoundTripWithDefaults() throws IOException {
+        embedHeyIntoBlankImage("-pass", "secret");
+
+        assertEquals(0, run("-extract", "-p", path("out.bmp"), "-out", path("back"), "-steg", "LSB1", "-pass", "secret"));
+
+        assertArrayEquals(SECRET, Files.readAllBytes(dir.resolve("back.txt")));
+        assertEquals("", errText());
+    }
+
+    @Test
+    void encryptedRoundTripWith3desCfb() throws IOException {
+        embedHeyIntoBlankImage("-a", "3des", "-m", "cfb", "-pass", "secret");
+
+        assertEquals(0, run("-extract", "-p", path("out.bmp"), "-out", path("back"), "-steg", "LSB1",
+                "-a", "3des", "-m", "cfb", "-pass", "secret"));
+
+        assertArrayEquals(SECRET, Files.readAllBytes(dir.resolve("back.txt")));
+    }
+
+    @Test
+    void wrongPasswordWithCbcSaysItCouldNotDecrypt() throws IOException {
+        embedHeyIntoBlankImage("-pass", "secret");
+
+        assertEquals(1, run("-extract", "-p", path("out.bmp"), "-out", path("back"), "-steg", "LSB1", "-pass", "wrong"));
+
+        assertEquals("Error: Could not decrypt: wrong password, algorithm or mode", errText().strip());
+        assertTrue(Files.notExists(dir.resolve("back.txt")));
+    }
+
+    @Test
+    void wrongPasswordWithOfbSaysNoHiddenData() throws IOException {
+        embedHeyIntoBlankImage("-m", "ofb", "-pass", "secret");
+
+        assertEquals(1, run("-extract", "-p", path("out.bmp"), "-out", path("back"), "-steg", "LSB1",
+                "-m", "ofb", "-pass", "wrong"));
+
+        assertEquals(NO_HIDDEN_DATA, errText().strip());
+    }
+
+    @Test
+    void extractWithoutPassFromEncryptedCarrierSaysNoHiddenData() throws IOException {
+        embedHeyIntoBlankImage("-pass", "secret");
+
+        assertEquals(1, run("-extract", "-p", path("out.bmp"), "-out", path("back"), "-steg", "LSB1"));
+
+        assertEquals(NO_HIDDEN_DATA, errText().strip());
+    }
+
+    @Test
+    void algorithmWithoutPassHidesWithoutEncryption() throws IOException {
+        embedHeyIntoBlankImage("-a", "aes256");
+
+        assertEquals(0, run("-extract", "-p", path("out.bmp"), "-out", path("back"), "-steg", "LSB1"));
+
+        assertArrayEquals(SECRET, Files.readAllBytes(dir.resolve("back.txt")));
+        assertEquals("", errText());
+    }
+
+    // 16x4 blank image: 192 pixel bytes hold 24 LSB1 bytes. Encrypted "hey" needs 4 + 16 with cbc.
+    private void embedHeyIntoBlankImage(String... cipherOptions) throws IOException {
+        write("16x4.bmp", TestBmps.blank(16, 4));
+        write("hola.txt", SECRET);
+        String[] args = {"-embed", "-in", path("hola.txt"), "-p", path("16x4.bmp"), "-out", path("out.bmp"), "-steg", "LSB1"};
+        String[] all = Arrays.copyOf(args, args.length + cipherOptions.length);
+        System.arraycopy(cipherOptions, 0, all, args.length, cipherOptions.length);
+
+        assertEquals(0, run(all));
     }
 
     private int run(String... args) {
