@@ -225,6 +225,8 @@ class MainTest {
     }
 
     private String errText() {
-        return errBytes.toString(StandardCharsets.UTF_8);
+        // Normalize line endings: println uses the platform separator (CRLF on Windows),
+        // but the expected strings use '\n'.
+        return errBytes.toString(StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 }
