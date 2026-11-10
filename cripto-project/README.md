@@ -10,7 +10,8 @@ Needs Java 21 and Maven. From this folder:
 mvn -q package
 ```
 
-This creates `target/stegobmp.jar`.
+This creates `target/stegobmp.jar`, which the `stegobmp` script in this folder runs. If the script
+lost its execute permission (a zip made on Windows drops it), run `chmod +x stegobmp` once.
 
 ## Usage
 
