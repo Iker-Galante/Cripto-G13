@@ -288,6 +288,38 @@ class MainTest {
         assertTrue(outText().contains("valid length of 80 bytes (a multiple of 16: any algorithm and mode)"), outText());
     }
 
+    @Test
+    void analyzeHintsAt3desForAMultipleOf8() throws IOException {
+        // 4 + 11 + 5 bytes pad to 24 with 3des: a multiple of 8 but not of 16.
+        embedIntoBlankImage("hello world".getBytes(StandardCharsets.US_ASCII), 16, 16, "-a", "3des", "-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB1"));
+
+        assertTrue(outText().contains("valid length of 24 bytes "
+                + "(a multiple of 8: 3des in any mode, or aes with cfb or ofb)"), outText());
+    }
+
+    @Test
+    void analyzeHintsAtCfbOrOfbForOtherLengths() throws IOException {
+        // cfb adds no padding: 4 + 3 + 5 = 12 bytes.
+        embedHeyIntoBlankImage("-m", "cfb", "-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB1"));
+
+        assertTrue(outText().contains("valid length of 12 bytes (not a multiple of 8: only cfb or ofb)"), outText());
+    }
+
+    @Test
+    void analyzeWithWrongPasswordFindsNothing() throws IOException {
+        embedHeyIntoBlankImage("-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB1", "-pass", "wrong", "-out", path("found")));
+
+        assertTrue(outText().contains("LSB1: nothing found with this -a, -m and -pass"), outText());
+        assertTrue(Files.notExists(dir.resolve("found_LSB1.txt")));
+        assertEquals("", errText());
+    }
+
     // 16x4 blank image: 192 pixel bytes hold 24 LSB1 bytes. Encrypted "hey" needs 4 + 16 with cbc.
     private void embedHeyIntoBlankImage(String... cipherOptions) throws IOException {
         embedIntoBlankImage(SECRET, 16, 4, cipherOptions);
