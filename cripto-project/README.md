@@ -55,7 +55,8 @@ cmp mensaje1.txt mensaje1_back.txt
 
 - the file found with each method, with its size and extension;
 - for a method that finds no plain file but reads a valid length, a warning that the data may be
-  encrypted, with a hint from that length (a multiple of 16 fits any algorithm and mode);
+  encrypted, with a hint from that length (a multiple of 16 fits any algorithm and mode) or, when
+  cipher blocks repeat, the mode: only `ecb` turns equal plain blocks into equal cipher blocks;
 - any bytes stored after the pixel rows the header declares, shown as text when they are printable.
 
 With `-out <prefix>` it also saves what it finds as `<prefix>_<method><extension>`,

@@ -9,11 +9,14 @@ import ar.edu.itba.payload.PayloadCodec;
 import ar.edu.itba.payload.PayloadException;
 import ar.edu.itba.steg.StegMethod;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 // -analyze: looks for a hidden file with each method and reports what it finds, one line per check.
 // Given an output prefix, it also saves each finding as <prefix>_<method><extension>.
@@ -64,19 +67,43 @@ public final class Analyzer {
             return "nothing found";
         }
         return "no plain file, but a valid length of " + ciphertext.length + " bytes ("
-                + blockHint(ciphertext.length) + "): it may be encrypted, try -a, -m and -pass"
+                + cipherHint(ciphertext) + "): it may be encrypted, try -a, -m and -pass"
                 + save("_" + method + ".enc", ciphertext);
     }
 
     // ECB and CBC pad to whole blocks (16 bytes for AES, 8 for 3DES); CFB and OFB keep any length.
-    private static String blockHint(int length) {
-        if (length % 16 == 0) {
+    // Only ECB encrypts equal plaintext blocks to equal ciphertext blocks, so a repeated block gives the mode away.
+    // No repeats proves nothing: a compressed file has no equal blocks to begin with.
+    private static String cipherHint(byte[] ciphertext) {
+        if (ciphertext.length % 16 == 0) {
+            int repeated = repeatedBlocks(ciphertext, 16);
+            if (repeated > 0) {
+                return repeated + " repeated 16-byte blocks: ecb mode";
+            }
+        }
+        if (ciphertext.length % 8 == 0) {
+            // AES output repeats in whole 16-byte blocks, so 8-byte repeats alone mean an 8-byte block cipher.
+            int repeated = repeatedBlocks(ciphertext, 8);
+            if (repeated > 0) {
+                return repeated + " repeated 8-byte blocks: 3des in ecb mode";
+            }
+        }
+        if (ciphertext.length % 16 == 0) {
             return "a multiple of 16: any algorithm and mode";
         }
-        if (length % 8 == 0) {
+        if (ciphertext.length % 8 == 0) {
             return "a multiple of 8: 3des in any mode, or aes with cfb or ofb";
         }
         return "not a multiple of 8: only cfb or ofb";
+    }
+
+    // How many blocks have the same bytes as some other block.
+    private static int repeatedBlocks(byte[] ciphertext, int blockSize) {
+        Map<ByteBuffer, Integer> counts = new HashMap<>();
+        for (int i = 0; i + blockSize <= ciphertext.length; i += blockSize) {
+            counts.merge(ByteBuffer.wrap(ciphertext, i, blockSize), 1, Integer::sum);  // compares by content
+        }
+        return counts.values().stream().filter(count -> count > 1).mapToInt(Integer::intValue).sum();
     }
 
     private String trailingData() throws IOException {

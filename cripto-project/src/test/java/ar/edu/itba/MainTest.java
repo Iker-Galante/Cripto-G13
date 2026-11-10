@@ -258,11 +258,46 @@ class MainTest {
         assertTrue(outText().contains("21 bytes after the pixel array: \"la password es gloria\""), outText());
     }
 
+    @Test
+    void analyzeSpotsEcbFromRepeatedBlocks() throws IOException {
+        // Plain blocks: size + 12 zeros, then three blocks of 16 zeros, then 4 zeros + ".txt" + NUL.
+        embedIntoBlankImage(new byte[64], 16, 16, "-a", "aes256", "-m", "ecb", "-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB1"));
+
+        assertTrue(outText().contains("LSB1: no plain file, but a valid length of 80 bytes "
+                + "(3 repeated 16-byte blocks: ecb mode): it may be encrypted"), outText());
+    }
+
+    @Test
+    void analyzeSpots3desEcbFromRepeated8ByteBlocks() throws IOException {
+        // 4 + 56 + 5 bytes pad to 72, not a multiple of 16. Plain blocks 1 to 6 are 8 zeros each.
+        embedIntoBlankImage(new byte[56], 16, 16, "-a", "3des", "-m", "ecb", "-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB1"));
+
+        assertTrue(outText().contains("valid length of 72 bytes (6 repeated 8-byte blocks: 3des in ecb mode)"), outText());
+    }
+
+    @Test
+    void analyzeDoesNotCallCbcEcb() throws IOException {
+        embedIntoBlankImage(new byte[64], 16, 16, "-a", "aes256", "-m", "cbc", "-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB1"));
+
+        assertTrue(outText().contains("valid length of 80 bytes (a multiple of 16: any algorithm and mode)"), outText());
+    }
+
     // 16x4 blank image: 192 pixel bytes hold 24 LSB1 bytes. Encrypted "hey" needs 4 + 16 with cbc.
     private void embedHeyIntoBlankImage(String... cipherOptions) throws IOException {
-        write("16x4.bmp", TestBmps.blank(16, 4));
-        write("hola.txt", SECRET);
-        String[] args = {"-embed", "-in", path("hola.txt"), "-p", path("16x4.bmp"), "-out", path("out.bmp"), "-steg", "LSB1"};
+        embedIntoBlankImage(SECRET, 16, 4, cipherOptions);
+    }
+
+    // Hides content as a .txt with LSB1 in a blank width x height image and writes out.bmp.
+    private void embedIntoBlankImage(byte[] content, int width, int height, String... cipherOptions) throws IOException {
+        write("blank.bmp", TestBmps.blank(width, height));
+        write("hola.txt", content);
+        String[] args = {"-embed", "-in", path("hola.txt"), "-p", path("blank.bmp"), "-out", path("out.bmp"), "-steg", "LSB1"};
         String[] all = Arrays.copyOf(args, args.length + cipherOptions.length);
         System.arraycopy(cipherOptions, 0, all, args.length, cipherOptions.length);
 
