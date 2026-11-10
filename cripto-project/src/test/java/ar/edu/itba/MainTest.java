@@ -2,6 +2,7 @@ package ar.edu.itba;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ar.edu.itba.bmp.BmpImage;
@@ -27,6 +28,8 @@ class MainTest {
 
     private final ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
     private final PrintStream err = new PrintStream(errBytes, true, StandardCharsets.UTF_8);
+    private final ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
+    private final PrintStream out = new PrintStream(outBytes, true, StandardCharsets.UTF_8);
 
     @Test
     void embedThenExtractGivesTheSameFile() throws IOException {
@@ -121,9 +124,9 @@ class MainTest {
 
     @Test
     void usageErrorPrintsReasonAndUsage() {
-        assertEquals(1, run("-extract", "-p", "out.bmp", "-out", "back", "-steg", "LSB1", "-analyze"));
+        assertEquals(1, run("-extract", "-p", "out.bmp", "-out", "back", "-steg", "LSB1", "-verbose"));
 
-        assertEquals("Error: Unknown option: -analyze\n" + Main.USAGE, errText().strip());
+        assertEquals("Error: Unknown option: -verbose\n" + Main.USAGE, errText().strip());
     }
 
     @Test
@@ -201,6 +204,60 @@ class MainTest {
         assertEquals("", errText());
     }
 
+    @Test
+    void analyzeFindsTheMethodAndSavesTheFile() throws IOException {
+        embedHeyIntoBlankImage();
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-out", path("found")));
+
+        assertTrue(outText().contains("LSB1: found a 3-byte .txt file -> saved to " + path("found_LSB1.txt")), outText());
+        assertTrue(outText().contains("No data after the pixel array"), outText());
+        assertArrayEquals(SECRET, Files.readAllBytes(dir.resolve("found_LSB1.txt")));
+        assertEquals("", errText());
+    }
+
+    @Test
+    void analyzeOnlyTriesTheGivenMethod() throws IOException {
+        embedHeyIntoBlankImage();
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB4"));
+
+        assertTrue(outText().contains("LSB4: nothing found"), outText());
+        assertFalse(outText().contains("LSB1"), outText());
+    }
+
+    @Test
+    void analyzeWithoutPassSaysEncryptedDataMayBeThere() throws IOException {
+        embedHeyIntoBlankImage("-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-steg", "LSB1"));
+
+        assertTrue(outText().contains("LSB1: no plain file, but a valid length of 16 bytes "
+                + "(a multiple of 16: any algorithm and mode): it may be encrypted"), outText());
+    }
+
+    @Test
+    void analyzeWithPassDecryptsTheFile() throws IOException {
+        embedHeyIntoBlankImage("-a", "aes256", "-m", "ecb", "-pass", "secret");
+
+        assertEquals(0, run("-analyze", "-p", path("out.bmp"), "-a", "aes256", "-m", "ecb", "-pass", "secret"));
+
+        assertTrue(outText().contains("LSB1: found a 3-byte .txt file"), outText());
+    }
+
+    @Test
+    void analyzeShowsTextAppendedAfterThePixels() throws IOException {
+        byte[] image = TestBmps.blank(16, 4);
+        byte[] note = "la password es gloria".getBytes(StandardCharsets.US_ASCII);
+        byte[] withNote = Arrays.copyOf(image, image.length + note.length);
+        System.arraycopy(note, 0, withNote, image.length, note.length);
+        write("note.bmp", withNote);
+
+        assertEquals(0, run("-analyze", "-p", path("note.bmp")));
+
+        assertTrue(outText().contains("21 bytes after the pixel array: \"la password es gloria\""), outText());
+    }
+
     // 16x4 blank image: 192 pixel bytes hold 24 LSB1 bytes. Encrypted "hey" needs 4 + 16 with cbc.
     private void embedHeyIntoBlankImage(String... cipherOptions) throws IOException {
         write("16x4.bmp", TestBmps.blank(16, 4));
@@ -213,7 +270,7 @@ class MainTest {
     }
 
     private int run(String... args) {
-        return Main.run(args, err);
+        return Main.run(args, out, err);
     }
 
     private Path write(String name, byte[] content) throws IOException {
@@ -222,6 +279,10 @@ class MainTest {
 
     private String path(String name) {
         return dir.resolve(name).toString();
+    }
+
+    private String outText() {
+        return outBytes.toString(StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 
     private String errText() {

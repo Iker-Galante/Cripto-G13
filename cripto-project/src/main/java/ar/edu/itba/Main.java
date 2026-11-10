@@ -1,48 +1,51 @@
 package ar.edu.itba;
 
+import ar.edu.itba.analyze.Analyzer;
 import ar.edu.itba.bmp.BmpException;
 import ar.edu.itba.bmp.BmpImage;
 import ar.edu.itba.cli.ArgumentParser;
 import ar.edu.itba.cli.Arguments;
-import ar.edu.itba.cli.Arguments.Command;
 import ar.edu.itba.cli.UsageException;
 import ar.edu.itba.crypto.CryptoException;
 import ar.edu.itba.crypto.PayloadCipher;
 import ar.edu.itba.payload.Decoded;
 import ar.edu.itba.payload.PayloadCodec;
 import ar.edu.itba.payload.PayloadException;
+import ar.edu.itba.steg.StegMethod;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.List;
 
 public final class Main {
 
     static final String USAGE = """
             Usage:
               stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
-              stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]""";
+              stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
+              stegobmp -analyze -p <bitmap> [-steg <LSB1 | LSB4 | LSBI>] [-out <prefix>] [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]""";
 
     private Main() {
     }
 
     public static void main(String[] args) {
-        int status = run(args, System.err);
+        int status = run(args, System.out, System.err);
         if (status != 0) {
             System.exit(status);
         }
     }
 
-    // Returns the exit status; errors go to err as one line, never as a stack trace.
-    static int run(String[] args, PrintStream err) {
+    // Returns the exit status; the -analyze report goes to out, errors go to err as one line, never as a stack trace.
+    static int run(String[] args, PrintStream out, PrintStream err) {
         try {
             Arguments arguments = ArgumentParser.parse(args);
-            if (arguments.command() == Command.EMBED) {
-                embed(arguments);
-            } else {
-                extract(arguments);
+            switch (arguments.command()) {
+                case EMBED -> embed(arguments);
+                case EXTRACT -> extract(arguments);
+                case ANALYZE -> analyze(arguments, out);
             }
             return 0;
         } catch (UsageException e) {
@@ -87,6 +90,19 @@ public final class Main {
 
         // -out is a name without extension; the extension comes from the hidden payload.
         Files.write(Path.of(arguments.outFile() + decoded.extension()), decoded.data());
+    }
+
+    private static void analyze(Arguments arguments, PrintStream out) throws IOException {
+        BmpImage carrier = BmpImage.parse(Files.readAllBytes(arguments.carrier()));
+        List<StegMethod> methods = arguments.stegMethod() == null
+                ? List.of(StegMethod.values())
+                : List.of(arguments.stegMethod());
+
+        out.println("Analysis of " + arguments.carrier() + " (" + carrier.width() + "x" + carrier.height() + ")"
+                + (arguments.cipher() == null ? "" : ", decrypting with the given -a, -m and -pass"));
+        for (String line : new Analyzer(carrier, arguments.cipher(), arguments.outFile()).analyze(methods)) {
+            out.println("  " + line);
+        }
     }
 
     private static String extensionOf(Path file) {

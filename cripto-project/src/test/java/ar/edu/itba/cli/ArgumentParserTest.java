@@ -50,7 +50,7 @@ class ArgumentParserTest {
 
     @Test
     void missingCommandFails() {
-        assertRejected("-p carrier.bmp -out out.bmp -steg LSB1", "Missing -embed or -extract");
+        assertRejected("-p carrier.bmp -out out.bmp -steg LSB1", "Missing -embed, -extract or -analyze");
     }
 
     @Test
@@ -60,7 +60,7 @@ class ArgumentParserTest {
 
     @Test
     void unknownFlagFails() {
-        assertRejected("-extract -p out.bmp -out back -steg LSB1 -analyze", "Unknown option: -analyze");
+        assertRejected("-extract -p out.bmp -out back -steg LSB1 -verbose", "Unknown option: -verbose");
     }
 
     @Test
@@ -162,7 +162,9 @@ class ArgumentParserTest {
     @Test
     void bothCommandsFail() {
         assertRejected("-embed -extract -in hola.txt -p carrier.bmp -out out.bmp -steg LSB1",
-                "Give only one of -embed or -extract");
+                "Give only one of -embed, -extract or -analyze");
+        assertRejected("-extract -analyze -p out.bmp -out back -steg LSB1",
+                "Give only one of -embed, -extract or -analyze");
     }
 
     @Test
@@ -174,6 +176,41 @@ class ArgumentParserTest {
     void inWithExtractFails() {
         assertRejected("-extract -in hola.txt -p out.bmp -out back -steg LSB1",
                 "Option -in is not used with -extract");
+    }
+
+    @Test
+    void analyzeNeedsOnlyTheCarrier() {
+        Arguments arguments = parse("-analyze -p suspect.bmp");
+
+        assertEquals(Command.ANALYZE, arguments.command());
+        assertEquals(Path.of("suspect.bmp"), arguments.carrier());
+        assertNull(arguments.outFile());
+        assertNull(arguments.stegMethod());
+        assertNull(arguments.cipher());
+    }
+
+    @Test
+    void analyzeAcceptsMethodPrefixAndCipher() {
+        Arguments arguments = parse("-analyze -p suspect.bmp -steg LSB4 -out found -a aes256 -m ecb -pass gloria");
+
+        assertEquals(StegMethod.LSB4, arguments.stegMethod());
+        assertEquals(Path.of("found"), arguments.outFile());
+        assertEquals(new CipherSpec(CipherAlgorithm.AES256, CipherMode.ECB, "gloria"), arguments.cipher());
+    }
+
+    @Test
+    void analyzeWithoutCarrierFails() {
+        assertRejected("-analyze -out found", "Missing option -p");
+    }
+
+    @Test
+    void inWithAnalyzeFails() {
+        assertRejected("-analyze -in hola.txt -p suspect.bmp", "Option -in is not used with -analyze");
+    }
+
+    @Test
+    void analyzeChecksTheMethod() {
+        assertRejected("-analyze -p suspect.bmp -steg LSB2", "Invalid steganography method: LSB2");
     }
 
     private static Arguments parse(String commandLine) {

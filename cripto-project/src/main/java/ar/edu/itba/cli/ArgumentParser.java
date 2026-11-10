@@ -6,6 +6,7 @@ import ar.edu.itba.crypto.CipherMode;
 import ar.edu.itba.crypto.CipherSpec;
 import ar.edu.itba.steg.StegMethod;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -23,11 +24,12 @@ public final class ArgumentParser {
 
         for (int i = 0; i < args.length; i++) {
             String flag = args[i];
-            if (flag.equals("-embed") || flag.equals("-extract")) {
+            Command given = commandFor(flag);
+            if (given != null) {
                 if (command != null) {
-                    throw new UsageException("Give only one of -embed or -extract");
+                    throw new UsageException("Give only one of -embed, -extract or -analyze");
                 }
-                command = flag.equals("-embed") ? Command.EMBED : Command.EXTRACT;
+                command = given;
             } else if (VALUE_FLAGS.contains(flag)) {
                 if (i + 1 == args.length || args[i + 1].startsWith("-")) {
                     throw new UsageException("Missing value for " + flag);
@@ -42,22 +44,28 @@ public final class ArgumentParser {
         }
 
         if (command == null) {
-            throw new UsageException("Missing -embed or -extract");
+            throw new UsageException("Missing -embed, -extract or -analyze");
         }
         if (command == Command.EMBED) {
             require(values, "-in");
         } else if (values.containsKey("-in")) {
-            throw new UsageException("Option -in is not used with -extract");
+            throw new UsageException("Option -in is not used with " + command.flag());
         }
         require(values, "-p");
-        require(values, "-out");
-        require(values, "-steg");
-        StegMethod method = stegMethod(values.get("-steg"));
+        if (command != Command.ANALYZE) {
+            require(values, "-out");
+            require(values, "-steg");
+        }
+        StegMethod method = values.containsKey("-steg") ? stegMethod(values.get("-steg")) : null;
         CipherSpec cipher = cipherSpec(values);
 
         Path inFile = command == Command.EMBED ? Path.of(values.get("-in")) : null;
-        return new Arguments(command, inFile, Path.of(values.get("-p")),
-                Path.of(values.get("-out")), method, cipher);
+        Path outFile = values.containsKey("-out") ? Path.of(values.get("-out")) : null;
+        return new Arguments(command, inFile, Path.of(values.get("-p")), outFile, method, cipher);
+    }
+
+    private static Command commandFor(String flag) {
+        return Arrays.stream(Command.values()).filter(c -> c.flag().equals(flag)).findFirst().orElse(null);
     }
 
     private static void require(Map<String, String> values, String flag) {

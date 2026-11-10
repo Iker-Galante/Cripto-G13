@@ -109,7 +109,7 @@ class CatedraSamplesTest {
 
     private int run(String... args) {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
-        int status = Main.run(args, new PrintStream(err, true, StandardCharsets.UTF_8));
+        int status = Main.run(args, System.out, new PrintStream(err, true, StandardCharsets.UTF_8));
         assertEquals("", err.toString(StandardCharsets.UTF_8));
         return status;
     }

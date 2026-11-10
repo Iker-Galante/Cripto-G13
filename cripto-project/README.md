@@ -17,6 +17,7 @@ This creates `target/stegobmp.jar`.
 ```
 ./stegobmp -embed -in <file> -p <bitmap> -out <bitmap> -steg <LSB1 | LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
 ./stegobmp -extract -p <bitmap> -out <file> -steg <LSB1 | LSB4 | LSBI> [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
+./stegobmp -analyze -p <bitmap> [-steg <LSB1 | LSB4 | LSBI>] [-out <prefix>] [-a <aes128 | aes192 | aes256 | 3des>] [-m <ecb | cfb | ofb | cbc>] [-pass <password>]
 ```
 
 - `-embed` hides `-in` inside the image `-p` and writes the result to `-out`.
@@ -25,6 +26,7 @@ This creates `target/stegobmp.jar`.
 - `-pass` encrypts the file before hiding it (and decrypts it on extract). The key and IV come
   from the password with PBKDF2-HMAC-SHA256. Extract needs the same `-steg`, `-a`, `-m` and
   `-pass` that embed used.
+- `-analyze` looks for a hidden file in `-p` when the method is unknown (see below).
 
 Encryption defaults:
 
@@ -45,6 +47,28 @@ Example from the assignment, with 3DES:
 ./stegobmp -embed -in "mensaje1.txt" -p "imagen1.bmp" -out "imagenmas1.bmp" -steg LSBI -a 3des -m cbc -pass "oculto"
 ./stegobmp -extract -p "imagenmas1.bmp" -out "mensaje1_back" -steg LSBI -a 3des -m cbc -pass "oculto"
 cmp mensaje1.txt mensaje1_back.txt
+```
+
+## Analyzing an unknown image
+
+`-analyze` tries LSB1, LSB4 and LSBI (or only the `-steg` method) and prints one line per check:
+
+- the file found with each method, with its size and extension;
+- for a method that finds no plain file but reads a valid length, a warning that the data may be
+  encrypted, with a hint from that length (a multiple of 16 fits any algorithm and mode);
+- any bytes stored after the pixel rows the header declares, shown as text when they are printable.
+
+With `-out <prefix>` it also saves what it finds as `<prefix>_<method><extension>`,
+`<prefix>_<method>.enc` (the possibly encrypted bytes) or `<prefix>_trailing.bin`. With `-a`, `-m`
+and `-pass` it decrypts before looking for the file.
+
+```
+$ ./stegobmp -analyze -p paris.bmp
+Analysis of paris.bmp (1600x1000)
+  LSB1: nothing found
+  LSB4: nothing found
+  LSBI: nothing found
+  21 bytes after the pixel array: "la password es gloria"
 ```
 
 ## Tests
