@@ -1,0 +1,26 @@
+Usted invocó con 7 argumentos
+
+El archivo tiene 18000000 bytes de imagen
+El nombre del algoritmo LSB es:LSB4. 
+
+El archivo anillo2.bmp puede guardar 9000000 bytes en modo LSB4
+
+El archivo a ocultar tiene 2041764 bytes
+
+
+La cadena a encriptar tiene 2041773 bytes
+Se pide encriptar con aes256ecb
+
+Password:gloria
+Clave:32 bytes
+IV: 0 bytes
+
+Out es:90d92cde29b939870f0d199437a24a02709ce4bd164a6b45001cc9e3ca752f3f
+Key derivada:90d92cde29b939870f0d199437a24a02709ce4bd164a6b45001cc9e3ca752f3f
+IV derivada: 
+El bloque despuesEncr tiene longitud 2041776
+
+El msg tiene 2041780 bytes
+
+Se oculta el archivo wanted.wmv...
+Se ocultaron con exito 2041780 bytes
