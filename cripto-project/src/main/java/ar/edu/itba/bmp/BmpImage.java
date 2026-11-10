@@ -8,15 +8,21 @@ public final class BmpImage {
     private static final int MIN_HEADER_SIZE = 54;  // 14-byte file header + 40-byte info header
 
     private static final int PIXEL_OFFSET_POSITION = 0x0A;
+    private static final int WIDTH_POSITION = 0x12;
+    private static final int HEIGHT_POSITION = 0x16;
     private static final int BITS_PER_PIXEL_POSITION = 0x1C;
     private static final int COMPRESSION_POSITION = 0x1E;
 
     private final byte[] header;
     private final byte[] pixels;
+    private final int width;
+    private final int height;
 
-    private BmpImage(byte[] header, byte[] pixels) {
+    private BmpImage(byte[] header, byte[] pixels, int width, int height) {
         this.header = header;
         this.pixels = pixels;
+        this.width = width;
+        this.height = height;
     }
 
     public static BmpImage parse(byte[] file) {
@@ -39,8 +45,28 @@ public final class BmpImage {
             throw new BmpException("Corrupt header: invalid pixel data offset " + offset);
         }
 
+        // A negative height means the rows are stored top-down; the size is the same.
         return new BmpImage(Arrays.copyOfRange(file, 0, offset),
-                            Arrays.copyOfRange(file, offset, file.length));
+                            Arrays.copyOfRange(file, offset, file.length),
+                            readIntLE(file, WIDTH_POSITION),
+                            Math.abs(readIntLE(file, HEIGHT_POSITION)));
+    }
+
+    public int width() {
+        return width;
+    }
+
+    public int height() {
+        return height;
+    }
+
+    // Bytes after the rows the header declares. pixels() includes them; a normal file has none.
+    public byte[] trailingBytes() {
+        long imageSize = (width * 3L + 3) / 4 * 4 * height;  // rows padded to a multiple of 4
+        if (width <= 0 || imageSize >= pixels.length) {
+            return new byte[0];
+        }
+        return Arrays.copyOfRange(pixels, (int) imageSize, pixels.length);
     }
 
     public byte[] header() {

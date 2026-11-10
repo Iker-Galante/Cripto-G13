@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -48,6 +49,30 @@ class BmpImageTest {
         assertEquals(0, pixels[97]);
         assertEquals(0, pixels[98]);
         assertEquals(0, pixels[99]);
+    }
+
+    @Test
+    void readsTheImageSize() {
+        BmpImage image = BmpImage.parse(TestBmps.sixByFive());
+
+        assertEquals(6, image.width());
+        assertEquals(5, image.height());
+    }
+
+    @Test
+    void normalImageHasNoTrailingBytes() {
+        assertEquals(0, BmpImage.parse(TestBmps.sixByFive()).trailingBytes().length);
+    }
+
+    @Test
+    void bytesAfterTheDeclaredRowsAreTrailing() {
+        byte[] file = TestBmps.sixByFive();
+        byte[] withExtra = Arrays.copyOf(file, file.length + 3);
+        withExtra[file.length] = 'a';
+        withExtra[file.length + 1] = 'b';
+        withExtra[file.length + 2] = 'c';
+
+        assertArrayEquals(new byte[] {'a', 'b', 'c'}, BmpImage.parse(withExtra).trailingBytes());
     }
 
     @Test
