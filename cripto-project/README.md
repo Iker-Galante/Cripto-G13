@@ -4,7 +4,8 @@ Hides a file inside a 24-bit BMP image and gets it back.
 
 ## Build
 
-Needs Java 21 and Maven. From this folder:
+Needs Java 21, Maven and `make`; if they are missing, see
+[Installing Java and Maven](#installing-java-and-maven). From this folder:
 
 ```
 make
@@ -15,6 +16,35 @@ script executable. `make clean` removes the build.
 
 Without `make`, run `mvn -q package` instead. If the script lost its execute permission (a zip made
 on Windows drops it), run `chmod +x stegobmp` once.
+
+### Installing Java and Maven
+
+On Linux, macOS or WSL, [SDKMAN!](https://sdkman.io) installs both without root. It needs `curl`,
+`zip` and `unzip`. Install it and load it in the current terminal:
+
+```
+curl -s "https://get.sdkman.io" | bash
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+```
+
+Look up the identifier of the current Java 21 release, for example the Eclipse Temurin one (it ends
+in `-tem`):
+
+```
+sdk list java | grep 21.0
+```
+
+Install that Java and Maven, using the identifier from the list:
+
+```
+sdk install java 21.0.13.0+9-tem
+sdk install maven
+```
+
+`java -version` and `mvn -version` should now answer with Java 21 and Maven.
+
+`make` comes from the system's package manager, for example `sudo apt install make` on Debian or
+Ubuntu.
 
 ## Usage
 
