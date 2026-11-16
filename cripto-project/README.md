@@ -7,11 +7,14 @@ Hides a file inside a 24-bit BMP image and gets it back.
 Needs Java 21 and Maven. From this folder:
 
 ```
-mvn -q package
+make
 ```
 
-This creates `target/stegobmp.jar`, which the `stegobmp` script in this folder runs. If the script
-lost its execute permission (a zip made on Windows drops it), run `chmod +x stegobmp` once.
+This creates `target/stegobmp.jar`, which the `stegobmp` script in this folder runs, and makes the
+script executable. `make clean` removes the build.
+
+Without `make`, run `mvn -q package` instead. If the script lost its execute permission (a zip made
+on Windows drops it), run `chmod +x stegobmp` once.
 
 ## Usage
 
@@ -75,5 +78,8 @@ Analysis of paris.bmp (1600x1000)
 
 ## Tests
 
-`STEGOBMP_SAMPLES=/path/to/ejemplo mvn -q test` also runs the checks against the course's sample
-images; without the variable they are skipped.
+`make test` runs the tests, including the checks against the course's sample images in
+`../TP/ejemplo`. Set `STEGOBMP_SAMPLES=/path/to/ejemplo` to take the images from another folder; if
+the folder does not exist those checks are skipped.
+
+With Maven directly, `mvn -q test` skips them unless `STEGOBMP_SAMPLES` is set.
